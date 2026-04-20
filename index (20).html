@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLORT AZ – Sevgini Tap</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FF3B6B'/><path d='M50 75 C50 75 25 58 25 40 C25 30 33 24 42 24 C46 24 49 26 50 30 C51 26 54 24 58 24 C67 24 75 30 75 40 C75 58 50 75 50 75Z' fill='white'/></svg>">
+<meta name="theme-color" content="#FF3B6B">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--rose:#FF3B6B;--coral:#FF6B6B;--gold:#FFD166;--mint:#06D6A0;--bg:#fdf0f4;--text:#2d1320;--muted:#a07080;--shadow:rgba(255,59,107,.18)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 60% at 10% 10%,rgba(255,107,107,.15) 0%,transparent 60%),
+             radial-gradient(ellipse 60% 80% at 90% 90%,rgba(255,59,107,.12) 0%,transparent 60%)}
+.screen{display:none;position:relative;z-index:1}
+.screen.active{display:flex;flex-direction:column;min-height:100vh}
+
+/* TOAST */
+#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#2d1320;color:white;padding:12px 24px;border-radius:30px;font-size:14px;
+  font-weight:600;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;z-index:500;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.spinner{width:48px;height:48px;border:4px solid rgba(255,59,107,.2);
+  border-top-color:var(--rose);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes floatUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
+@keyframes heartbeat{0%,100%{transform:scale(1)}14%{transform:scale(1.18)}28%{transform:scale(1)}42%{transform:scale(1.1)}56%{transform:scale(1)}}
+@keyframes cardReveal{from{opacity:0;transform:scale(.94) translateY(20px)}to{opacity:1;transform:scale(1)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── AUTH ── */
+#auth{align-items:center;justify-content:center;padding:30px 20px;min-height:100vh;overflow-y:auto}
+.auth-logo{text-align:center;margin-bottom:24px;animation:floatUp .8s ease both}
+.auth-logo .heart{font-size:56px;display:block;animation:heartbeat 1.8s ease-in-out infinite}
+.auth-logo .name{font-family:'Playfair Display',serif;font-size:42px;font-weight:900;
+  background:linear-gradient(135deg,var(--rose),var(--coral),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+.auth-logo .sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-top:4px;font-weight:600}
+.auth-card{background:white;border-radius:28px;padding:28px 24px;width:100%;max-width:400px;
+  box-shadow:0 12px 40px rgba(0,0,0,.1);animation:floatUp .9s .1s ease both}
+.auth-tabs{display:flex;background:#f8eef2;border-radius:14px;padding:4px;margin-bottom:20px;gap:4px}
+.auth-tab{flex:1;padding:9px;border:none;background:transparent;border-radius:10px;font-size:14px;
+  font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;color:var(--muted);transition:all .2s}
+.auth-tab.active{background:white;color:var(--rose);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.form-panel{display:none}
+.form-panel.active{display:block}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.fg input,.fg select,.fg textarea{width:100%;padding:12px 14px;border:2px solid #f0e0e5;border-radius:12px;
+  font-size:14px;font-family:'Nunito',sans-serif;color:var(--text);background:white;transition:border-color .2s;outline:none}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--rose)}
+.fg textarea{resize:vertical;min-height:70px}
+.emoji-row{display:flex;flex-wrap:wrap;gap:7px}
+.emoji-opt{width:40px;height:40px;border:2px solid #f0e0e5;border-radius:10px;background:white;
+  font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.emoji-opt.selected{border-color:var(--rose);background:#fff0f4;transform:scale(1.1)}
+.btn-primary{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  background:linear-gradient(135deg,var(--rose),var(--coral));color:white;border:none;
+  padding:15px 24px;border-radius:50px;font-size:16px;font-weight:700;font-family:'Nunito',sans-serif;
+  cursor:pointer;box-shadow:0 8px 24px var(--shadow);transition:transform .2s;margin-top:6px}
+.btn-primary:hover{transform:translateY(-2px)}
+.btn-primary:active{transform:scale(.97)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-outline{display:flex;align-items:center;justify-content:center;width:100%;background:transparent;
+  color:var(--rose);border:2px solid var(--rose);padding:13px 24px;border-radius:50px;font-size:15px;
+  font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:10px;transition:all .2s}
+.btn-outline:hover{background:var(--rose);color:white}
+.divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#f0e0e5}
+
+/* ── SPLASH ── */
+#splash{align-items:center;justify-content:center;text-align:center;padding:40px 20px}
+.logo-wrap{margin-bottom:28px;animation:floatUp .8s ease both}
+.logo-heart{font-size:72px;display:block;animation:heartbeat 1.8s ease-in-out infinite}
+.logo-name{font-family:'Playfair Display',serif;font-size:52px;font-weight:900;
+  background:linear-gradient(135deg,var(--rose),var(--coral),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px;line-height:1}
+.logo-sub{font-size:13px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-top:6px;font-weight:600}
+.splash-tagline{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;margin-bottom:10px;animation:floatUp .9s .1s ease both}
+.splash-sub{color:var(--muted);font-size:14px;margin-bottom:36px;animation:floatUp 1s .2s ease both}
+.btn-splash{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--rose),var(--coral));
+  color:white;border:none;padding:18px 44px;border-radius:50px;font-size:17px;font-weight:700;
+  font-family:'Nunito',sans-serif;cursor:pointer;box-shadow:0 8px 30px var(--shadow);transition:transform .2s;animation:floatUp 1s .3s ease both}
+.btn-splash:hover{transform:translateY(-3px)}
+.splash-features{display:flex;gap:28px;justify-content:center;margin-top:44px;animation:floatUp 1s .4s ease both}
+.feat{display:flex;flex-direction:column;align-items:center;gap:6px}
+.feat-icon{font-size:26px}
+.feat-label{font-size:11px;color:var(--muted);font-weight:600}
+
+/* ── SWIPE ── */
+#swipe{flex-direction:column;max-width:430px;margin:0 auto;width:100%}
+.match-banner{display:none;position:fixed;inset:0;z-index:200;background:rgba(255,59,107,.94);
+  align-items:center;justify-content:center;flex-direction:column;text-align:center}
+.match-banner.show{display:flex;animation:fadeIn .4s}
+.match-banner h2{font-family:'Playfair Display',serif;font-size:42px;color:white;font-weight:900;margin-bottom:6px;animation:popIn .5s cubic-bezier(.175,.885,.32,1.275) both}
+.match-banner p{color:rgba(255,255,255,.85);font-size:15px;margin-bottom:24px}
+.match-avatars{display:flex;gap:16px;margin-bottom:28px;align-items:center;animation:popIn .5s .1s cubic-bezier(.175,.885,.32,1.275) both}
+.match-avatar{width:90px;height:90px;border-radius:50%;border:4px solid white;font-size:44px;
+  display:flex;align-items:center;justify-content:center;background:white;overflow:hidden}
+.match-avatar img{width:100%;height:100%;object-fit:cover}
+.match-heart{font-size:28px;animation:heartbeat 1s ease-in-out infinite}
+.btn-match-msg{background:white;color:var(--rose);border:none;padding:14px 36px;border-radius:50px;
+  font-size:15px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;margin-bottom:12px;display:block;transition:transform .2s}
+.btn-match-msg:hover{transform:scale(1.05)}
+.btn-match-skip{background:transparent;color:white;border:2px solid rgba(255,255,255,.5);padding:10px 28px;
+  border-radius:50px;font-size:13px;font-weight:600;font-family:'Nunito',sans-serif;cursor:pointer}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 8px}
+.topbar-logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;
+  background:linear-gradient(135deg,var(--rose),var(--coral));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.topbar-icons{display:flex;gap:10px}
+.topbar-btn{background:white;border:none;width:40px;height:40px;border-radius:50%;font-size:16px;cursor:pointer;
+  box-shadow:0 2px 10px rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center;transition:transform .15s}
+.topbar-btn:hover{transform:scale(1.1)}
+.db-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(6,214,160,.1);
+  border:1px solid rgba(6,214,160,.3);color:#059669;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.dot-live{width:6px;height:6px;border-radius:50%;background:var(--mint);animation:pulse 1.5s ease-in-out infinite}
+
+/* CARD STACK */
+.card-stack{position:relative;height:480px;margin:6px 16px}
+.profile-card{position:absolute;inset:0;background:white;border-radius:24px;overflow:hidden;
+  box-shadow:0 10px 40px rgba(0,0,0,.12);cursor:grab;user-select:none;transform-origin:center bottom}
+.profile-card:active{cursor:grabbing}
+.profile-card.is-top{z-index:10}
+.profile-card.behind-1{z-index:9;transform:scale(.96) translateY(12px)}
+.profile-card.behind-2{z-index:8;transform:scale(.92) translateY(24px)}
+.card-photo{width:100%;height:360px;position:relative;overflow:hidden;background:#f0e0e5}
+.card-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.card-photo-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:110px}
+.card-gradient{position:absolute;bottom:0;left:0;right:0;height:65%;
+  background:linear-gradient(to top,rgba(0,0,0,.75) 0%,rgba(0,0,0,.2) 60%,transparent 100%)}
+.card-dots{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:5px}
+.cdot{width:32px;height:3px;border-radius:2px;background:rgba(255,255,255,.4)}
+.cdot.active{background:white}
+.card-info{position:absolute;bottom:0;left:0;right:0;padding:16px 20px;color:white;z-index:2}
+.card-name{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;display:flex;align-items:baseline;gap:8px}
+.card-age{font-size:19px;font-weight:400;opacity:.9}
+.card-location{font-size:12px;opacity:.8;margin-top:2px}
+.card-job{font-size:12px;opacity:.75;margin-top:1px}
+.card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.card-tag{background:rgba(255,255,255,.2);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.25);
+  color:white;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.card-body{padding:14px 18px}
+.card-bio{font-size:13px;color:var(--muted);line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.stamp{position:absolute;top:36px;padding:7px 16px;border-radius:8px;font-size:22px;font-weight:900;
+  letter-spacing:2px;border:4px solid;opacity:0;z-index:20;font-family:'Playfair Display',serif;pointer-events:none}
+.stamp-like{left:18px;color:var(--mint);border-color:var(--mint);transform:rotate(-15deg)}
+.stamp-nope{right:18px;color:var(--rose);border-color:var(--rose);transform:rotate(15deg)}
+
+/* PHOTO NAVIGATION */
+.card-photo-nav{position:absolute;inset:0;display:flex;z-index:5}
+.card-photo-nav-left{flex:1}
+.card-photo-nav-right{flex:1}
+
+.actions{display:flex;justify-content:center;align-items:center;gap:18px;padding:14px 20px 8px}
+.action-btn{border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:transform .2s,box-shadow .2s;font-size:22px}
+.action-btn:hover{transform:scale(1.12)}
+.action-btn:active{transform:scale(.95)}
+.btn-undo{width:56px;height:56px;background:white;box-shadow:0 4px 16px rgba(0,0,0,.1)}
+.btn-nope{width:66px;height:66px;background:white;box-shadow:0 4px 20px rgba(255,59,107,.2)}
+.btn-like{width:66px;height:66px;background:linear-gradient(135deg,var(--rose),var(--coral));box-shadow:0 4px 20px var(--shadow)}
+.btn-like span{color:white}
+.btn-super{width:56px;height:56px;background:white;box-shadow:0 4px 16px rgba(6,214,160,.2)}
+.swipe-hint{text-align:center;font-size:11px;color:var(--muted);padding:2px 0 10px}
+.empty-state{text-align:center;padding:50px 30px;display:none}
+.empty-state.show{display:block}
+.empty-icon{font-size:60px;margin-bottom:16px}
+.empty-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+
+/* ── CHATS ── */
+#chats{flex-direction:column;max-width:430px;margin:0 auto;width:100%}
+.screen-header{padding:16px 20px 10px;display:flex;align-items:center;justify-content:space-between}
+.screen-title{font-family:'Playfair Display',serif;font-size:24px;font-weight:700}
+.matches-row-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:2px;padding:0 20px 8px}
+.matches-row{display:flex;gap:14px;padding:0 20px 16px;overflow-x:auto;scrollbar-width:none}
+.matches-row::-webkit-scrollbar{display:none}
+.match-thumb{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;cursor:pointer}
+.match-thumb-av{width:60px;height:60px;border-radius:50%;border:3px solid var(--rose);font-size:26px;
+  display:flex;align-items:center;justify-content:center;background:white;overflow:hidden;transition:transform .2s}
+.match-thumb-av:hover{transform:scale(1.08)}
+.match-thumb-av img{width:100%;height:100%;object-fit:cover}
+.match-thumb-name{font-size:11px;font-weight:600;color:var(--text)}
+.conv-list{flex:1;overflow-y:auto;padding:0 14px}
+.conv-item{display:flex;align-items:center;gap:12px;padding:12px 8px;border-radius:14px;
+  cursor:pointer;transition:background .2s;border-bottom:1px solid rgba(0,0,0,.04)}
+.conv-item:hover{background:rgba(255,59,107,.05)}
+.conv-av{width:52px;height:52px;border-radius:50%;font-size:24px;display:flex;align-items:center;
+  justify-content:center;background:var(--bg);flex-shrink:0;overflow:hidden}
+.conv-av img{width:100%;height:100%;object-fit:cover}
+.conv-details{flex:1;min-width:0}
+.conv-name{font-weight:700;font-size:14px}
+.conv-msg{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.conv-time{font-size:10px;color:var(--muted);flex-shrink:0}
+.conv-badge{background:var(--rose);color:white;border-radius:50%;width:18px;height:18px;
+  font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* ── CHAT DETAIL ── */
+#chatDetail{flex-direction:column;max-width:430px;margin:0 auto;width:100%;height:100vh;max-height:100vh;overflow:hidden}
+.chat-header{display:flex;align-items:center;gap:12px;padding:14px 18px;background:white;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.chat-back{font-size:22px;cursor:pointer;background:none;border:none;padding:4px}
+.chat-hav{width:42px;height:42px;border-radius:50%;font-size:22px;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden}
+.chat-hav img{width:100%;height:100%;object-fit:cover}
+.chat-hname{font-weight:700;font-size:15px}
+.chat-hstatus{font-size:11px;color:var(--mint)}
+.messages-area{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-height:0}
+.msg{max-width:74%;padding:11px 15px;border-radius:20px;font-size:14px;line-height:1.5}
+.msg.mine{background:linear-gradient(135deg,var(--rose),var(--coral));color:white;align-self:flex-end;border-bottom-right-radius:4px}
+.msg.theirs{background:white;color:var(--text);align-self:flex-start;box-shadow:0 2px 8px rgba(0,0,0,.08);border-bottom-left-radius:4px}
+.msg-time{font-size:10px;opacity:.6;margin-top:3px}
+.chat-input-area{display:flex;gap:10px;padding:12px 14px 24px;background:white;box-shadow:0 -2px 10px rgba(0,0,0,.06)}
+.chat-input{flex:1;padding:12px 16px;border:2px solid #f0e0e5;border-radius:24px;font-size:14px;font-family:'Nunito',sans-serif;outline:none;transition:border-color .2s}
+.chat-input:focus{border-color:var(--rose)}
+.send-btn{width:44px;height:44px;background:linear-gradient(135deg,var(--rose),var(--coral));border:none;
+  border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px var(--shadow);transition:transform .2s;flex-shrink:0}
+.send-btn:hover{transform:scale(1.1)}
+
+/* ── PROFILE VIEW ── */
+#profile{flex-direction:column;max-width:430px;margin:0 auto;width:100%}
+.profile-header{padding:24px 20px 0;text-align:center}
+.profile-photo-wrap{width:110px;height:110px;border-radius:50%;overflow:hidden;margin:0 auto 12px;
+  border:4px solid white;box-shadow:0 8px 24px var(--shadow);cursor:pointer;position:relative}
+.profile-photo-wrap img{width:100%;height:100%;object-fit:cover}
+.profile-photo-fallback{width:100%;height:100%;background:linear-gradient(135deg,var(--rose),var(--coral));
+  display:flex;align-items:center;justify-content:center;font-size:50px}
+.profile-edit-badge{position:absolute;bottom:2px;right:2px;width:26px;height:26px;
+  background:var(--rose);border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px}
+.my-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:700}
+.my-sub{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+.profile-stats{display:flex;margin:16px 20px;background:white;border-radius:18px;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,.07)}
+.stat-item{flex:1;padding:14px 8px;text-align:center;border-right:1px solid rgba(0,0,0,.06)}
+.stat-item:last-child{border-right:none}
+.stat-num{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--rose)}
+.stat-label{font-size:10px;color:var(--muted);font-weight:600;margin-top:2px}
+.profile-bio-card{background:white;margin:0 20px 12px;border-radius:16px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.profile-bio-card p{font-size:13px;color:var(--muted);line-height:1.6}
+.profile-tags{display:flex;flex-wrap:wrap;gap:7px;padding:0 20px 12px}
+.profile-tag{background:white;border:1px solid #f0e0e5;border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600}
+.premium-banner{margin:0 20px 12px;background:linear-gradient(135deg,var(--rose),#ff6b35);border-radius:16px;
+  padding:16px 20px;color:white;display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;box-shadow:0 6px 20px var(--shadow);transition:transform .2s}
+.premium-banner:hover{transform:translateY(-2px)}
+.premium-text h3{font-size:15px;font-weight:700}
+.premium-text p{font-size:11px;opacity:.85;margin-top:2px}
+.premium-price{font-size:20px;font-weight:900;font-family:'Playfair Display',serif}
+.settings-list{padding:0 20px;display:flex;flex-direction:column;gap:9px}
+.setting-card{background:white;border-radius:14px;padding:14px 16px;display:flex;align-items:center;
+  justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,.06);cursor:pointer;transition:transform .15s}
+.setting-card:hover{transform:translateX(3px)}
+.setting-left{display:flex;align-items:center;gap:12px}
+.setting-icon{font-size:20px}
+.setting-title{font-size:14px;font-weight:700}
+.setting-desc{font-size:11px;color:var(--muted);margin-top:1px}
+
+/* ── EDIT PROFILE ── */
+#editProfile{flex-direction:column;max-width:430px;margin:0 auto;width:100%}
+.edit-header{display:flex;align-items:center;gap:12px;padding:14px 18px;background:white;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);position:sticky;top:0;z-index:20}
+.edit-back{font-size:22px;cursor:pointer;background:none;border:none;padding:4px}
+.edit-title{font-family:'Playfair Display',serif;font-size:19px;font-weight:700}
+.edit-section{background:white;margin-bottom:8px;padding:18px 20px}
+.edit-section-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px}
+.ef{margin-bottom:14px}
+.ef label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.ef input,.ef select,.ef textarea{width:100%;padding:12px 14px;border:2px solid #f0e0e5;border-radius:12px;
+  font-size:14px;font-family:'Nunito',sans-serif;color:var(--text);background:white;outline:none;transition:border-color .2s}
+.ef input:focus,.ef select:focus,.ef textarea:focus{border-color:var(--rose)}
+.ef textarea{resize:vertical;min-height:85px;line-height:1.5}
+.char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:3px}
+
+/* PHOTOS */
+.photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.photo-slot{aspect-ratio:3/4;border-radius:14px;border:2px dashed #f0c0cc;background:#fff8fa;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;
+  position:relative;overflow:hidden;transition:border-color .2s}
+.photo-slot:hover{border-color:var(--rose)}
+.photo-slot img{width:100%;height:100%;object-fit:cover}
+.photo-slot .padd{font-size:26px;color:#f0b0c0}
+.photo-slot .ptxt{font-size:10px;color:var(--muted);margin-top:4px;font-weight:600;text-align:center}
+.photo-del{position:absolute;top:5px;right:5px;width:22px;height:22px;background:rgba(255,59,107,.9);
+  border:none;border-radius:50%;color:white;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;z-index:5;font-weight:700}
+.photo-uploading{position:absolute;inset:0;background:rgba(255,255,255,.85);
+  display:flex;align-items:center;justify-content:center;border-radius:12px}
+
+/* INTERESTS */
+.interests-wrap{display:flex;flex-wrap:wrap;gap:8px}
+.ichip{padding:7px 14px;border-radius:20px;border:2px solid #f0e0e5;background:white;
+  font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:'Nunito',sans-serif;color:var(--text)}
+.ichip.sel{background:var(--rose);border-color:var(--rose);color:white}
+
+.save-bar{padding:14px 20px 28px;position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 80%,transparent)}
+.save-btn{width:100%;background:linear-gradient(135deg,var(--rose),var(--coral));color:white;border:none;
+  padding:17px;border-radius:50px;font-size:16px;font-weight:700;font-family:'Nunito',sans-serif;
+  cursor:pointer;box-shadow:0 8px 24px var(--shadow);transition:transform .2s}
+.save-btn:hover{transform:translateY(-2px)}
+.save-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+/* OTHER PROFILE VIEW */
+#otherProfile{flex-direction:column;max-width:430px;margin:0 auto;width:100%}
+.op-header{position:relative}
+.op-photos{position:relative;height:420px;background:#f0e0e5;overflow:hidden}
+.op-photos img{width:100%;height:100%;object-fit:cover;display:block}
+.op-photos-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:120px}
+.op-back{position:absolute;top:16px;left:16px;width:40px;height:40px;background:rgba(255,255,255,.9);
+  border:none;border-radius:50%;font-size:20px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.op-photo-dots{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:10}
+.op-photo-nav{position:absolute;inset:0;display:flex;z-index:5}
+.op-photo-nav-l{flex:1}
+.op-photo-nav-r{flex:1}
+.op-gradient{position:absolute;bottom:0;left:0;right:0;height:50%;
+  background:linear-gradient(to top,rgba(0,0,0,.7),transparent)}
+.op-name-wrap{position:absolute;bottom:16px;left:20px;right:20px;color:white;z-index:6}
+.op-name{font-family:'Playfair Display',serif;font-size:30px;font-weight:700}
+.op-sub{font-size:13px;opacity:.85;margin-top:3px}
+
+.op-body{padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+.op-bio-box{background:white;border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.op-bio-box .op-section-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+.op-bio-box p{font-size:14px;line-height:1.7;color:var(--text)}
+.op-details-box{background:white;border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.op-detail-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f8eef2}
+.op-detail-row:last-child{border-bottom:none}
+.op-detail-icon{font-size:18px;width:28px;text-align:center}
+.op-detail-text{font-size:14px;font-weight:600}
+.op-interests-box{background:white;border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.op-interest-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.op-interest-tag{background:#fff0f4;border:1px solid #ffd0dc;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600}
+.op-photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:16px;overflow:hidden}
+.op-photos-grid img{width:100%;aspect-ratio:1;object-fit:cover;cursor:pointer;transition:opacity .2s}
+.op-photos-grid img:hover{opacity:.85}
+.op-action-bar{display:flex;gap:12px;padding:14px 20px 28px;position:sticky;bottom:0;
+  background:linear-gradient(to top,var(--bg) 80%,transparent)}
+.op-btn-msg{flex:1;background:linear-gradient(135deg,var(--rose),var(--coral));color:white;border:none;
+  padding:16px;border-radius:50px;font-size:15px;font-weight:700;font-family:'Nunito',sans-serif;
+  cursor:pointer;box-shadow:0 6px 20px var(--shadow);transition:transform .2s}
+.op-btn-msg:hover{transform:translateY(-2px)}
+.op-btn-msg:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* PHOTO FULLSCREEN */
+#photoFullscreen{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:1000;
+  align-items:center;justify-content:center;flex-direction:column}
+#photoFullscreen.show{display:flex}
+#photoFullscreen img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:8px}
+#photoFullscreen .close-fs{position:absolute;top:20px;right:20px;background:rgba(255,255,255,.15);
+  border:none;color:white;width:44px;height:44px;border-radius:50%;font-size:22px;cursor:pointer}
+
+/* PREMIUM SCREEN */
+.plan-card{background:white;border-radius:16px;padding:16px 18px;display:flex;align-items:center;
+  border:2px solid #f0e0e5;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.plan-card:hover{border-color:var(--rose)}
+.plan-card.selected{border-color:var(--rose);background:#fff8fa}
+.plan-card.selected::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--rose)}
+.plan-left{flex:1}
+.plan-name{font-weight:700;font-size:15px}
+.plan-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.plan-price{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--rose);text-align:right}
+.plan-price span{font-size:11px;font-weight:400;color:var(--muted);font-family:'Nunito',sans-serif}
+.plan-badge{position:absolute;top:8px;right:8px;background:var(--rose);color:white;font-size:10px;
+  font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+
+/* LIKE COUNTER */
+.like-counter{display:flex;align-items:center;justify-content:center;gap:8px;
+  background:white;margin:0 16px 8px;border-radius:12px;padding:8px 16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);font-size:12px;font-weight:600;color:var(--muted)}
+.like-counter-bar{flex:1;height:6px;background:#f0e0e5;border-radius:3px;overflow:hidden}
+.like-counter-fill{height:100%;background:linear-gradient(90deg,var(--rose),var(--coral));border-radius:3px;transition:width .3s}
+
+/* BOTTOM NAV */
+.bottom-nav{display:flex;justify-content:space-around;align-items:center;background:white;
+  padding:10px 0 20px;border-radius:28px 28px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.07);
+  position:sticky;bottom:0;z-index:50;margin-top:auto}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;
+  cursor:pointer;padding:6px 18px;border-radius:12px;transition:background .2s}
+.nav-item:hover{background:rgba(255,59,107,.06)}
+.nav-icon{font-size:22px;filter:grayscale(1) opacity(.4);transition:filter .2s}
+.nav-item.active .nav-icon{filter:none}
+.nav-label{font-size:10px;font-weight:700;color:var(--muted)}
+.nav-item.active .nav-label{color:var(--rose)}
+.scrollable{overflow-y:auto;flex:1}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div style="font-size:14px;color:var(--muted);font-weight:600">FLORT AZ yüklənir...</div>
+</div>
+
+<!-- ══════════════ AUTH ══════════════ -->
+<div id="auth" class="screen">
+  <div class="auth-logo">
+    <span class="heart">💘</span>
+    <div class="name">FLORT AZ</div>
+    <div class="sub">Azərbaycan Tanışlıq</div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">🔑 Daxil ol</button>
+      <button class="auth-tab" onclick="switchTab('register')">✨ Qeydiyyat</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="form-panel active" id="loginPanel">
+      <div class="fg"><label>Email</label><input type="email" id="loginEmail" placeholder="email@example.com"></div>
+      <div class="fg"><label>Şifrə</label><input type="password" id="loginPass" placeholder="••••••••"></div>
+      <button class="btn-primary" id="loginBtn" onclick="doLogin()">🔑 Daxil ol</button>
+      <div class="divider">və ya</div>
+      <button class="btn-outline" onclick="switchTab('register')">✨ Qeydiyyatdan keç</button>
+    </div>
+
+    <!-- REGISTER -->
+    <div class="form-panel" id="registerPanel">
+      <div class="fg"><label>Email</label><input type="email" id="regEmail" placeholder="email@example.com"></div>
+      <div class="fg"><label>Şifrə</label><input type="password" id="regPass" placeholder="min. 6 simvol"></div>
+      <div class="fg"><label>Ad</label><input type="text" id="regName" placeholder="Adınız" maxlength="30"></div>
+      <div class="fg"><label>Yaş</label><input type="number" id="regAge" placeholder="Yaşınız" min="18" max="99"></div>
+      <div class="fg"><label>Şəhər</label><input type="text" id="regCity" placeholder="Bakı"></div>
+      <div class="fg"><label>Cins</label>
+        <select id="regGender"><option value="kişi">Kişi</option><option value="qadın">Qadın</option><option value="digər">Digər</option></select>
+      </div>
+      <div class="fg"><label>Avatar</label>
+        <div class="emoji-row" id="regEmojiGrid">
+          <div class="emoji-opt selected" data-emoji="😊" onclick="selRegEmoji(this)">😊</div>
+          <div class="emoji-opt" data-emoji="😎" onclick="selRegEmoji(this)">😎</div>
+          <div class="emoji-opt" data-emoji="🤩" onclick="selRegEmoji(this)">🤩</div>
+          <div class="emoji-opt" data-emoji="🥰" onclick="selRegEmoji(this)">🥰</div>
+          <div class="emoji-opt" data-emoji="🌸" onclick="selRegEmoji(this)">🌸</div>
+          <div class="emoji-opt" data-emoji="🌟" onclick="selRegEmoji(this)">🌟</div>
+          <div class="emoji-opt" data-emoji="🦋" onclick="selRegEmoji(this)">🦋</div>
+          <div class="emoji-opt" data-emoji="🔥" onclick="selRegEmoji(this)">🔥</div>
+        </div>
+      </div>
+      <button class="btn-primary" id="regBtn" onclick="doRegister()">✨ Qeydiyyat</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SPLASH ══════════════ -->
+<div id="splash" class="screen">
+  <div class="logo-wrap"><span class="logo-heart">💘</span><div class="logo-name">FLORT AZ</div><div class="logo-sub">Azərbaycan Tanışlıq</div></div>
+  <div class="splash-tagline">Salam, <span id="splashName">-</span>! 👋</div>
+  <div class="splash-sub">Bugün yeni birini tapmağa hazırsınız? 🇦🇿</div>
+  <button class="btn-splash" onclick="showSwipe()">🔥 Kəşfə Başla</button>
+  <div class="splash-features">
+    <div class="feat"><span class="feat-icon">🛡️</span><span class="feat-label">Etibarlı</span></div>
+    <div class="feat"><span class="feat-icon">⚡</span><span class="feat-label">Real-time</span></div>
+    <div class="feat"><span class="feat-icon">🇦🇿</span><span class="feat-label">Yerli</span></div>
+  </div>
+</div>
+
+<!-- ══════════════ SWIPE ══════════════ -->
+<div id="swipe" class="screen">
+  <div class="match-banner" id="matchBanner">
+    <h2>💘 Uyğun Gəldiniz!</h2>
+    <p>Siz və <span id="matchName">-</span> bir-birini bəyəndiniz</p>
+    <div class="match-avatars">
+      <div class="match-avatar" id="myMatchAv"><span id="myMatchEmoji">😊</span></div>
+      <div class="match-heart">💕</div>
+      <div class="match-avatar" id="theirMatchAv"><span id="theirMatchEmoji">😍</span></div>
+    </div>
+    <button class="btn-match-msg" id="matchMsgBtn">💬 Mesaj Göndər</button>
+    <button class="btn-match-skip" onclick="hideMatch()">Daha Sonra</button>
+  </div>
+
+  <div class="topbar">
+    <div class="topbar-logo">💘 FLORT AZ</div>
+    <div class="topbar-icons">
+      <button class="topbar-btn" onclick="refreshProfiles()">🔄</button>
+      <button class="topbar-btn" onclick="doLogout()">🚪</button>
+    </div>
+  </div>
+
+  <div class="like-counter" id="likeCounter" style="display:none">
+    <span>❤️</span>
+    <span id="likeCountText">0/10 bəyəni</span>
+    <div class="like-counter-bar"><div class="like-counter-fill" id="likeCountFill" style="width:0%"></div></div>
+  </div>
+  <div class="card-stack" id="cardStack"></div>
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon">💔</div>
+    <div class="empty-title">Hamısını gördün!</div>
+    <div class="empty-sub">Yeni profillər üçün bir az gözlə</div>
+    <button class="btn-splash" style="font-size:14px;padding:12px 28px" onclick="refreshProfiles()">🔄 Yenilə</button>
+  </div>
+
+  <div class="actions" id="swipeActions">
+    <button class="action-btn btn-nope" onclick="actionNope()">❌</button>
+    <button class="action-btn btn-like" onclick="actionLike()"><span>❤️</span></button>
+  </div>
+  <div class="swipe-hint">← keç &nbsp;|&nbsp; → bəyən</div>
+
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="showSwipe()"><span class="nav-icon">🔥</span><span class="nav-label">Kəşf Et</span></button>
+    <button class="nav-item" onclick="showLikes()"><span class="nav-icon">💝</span><span class="nav-label">Bəyənənlər</span></button>
+    <button class="nav-item" onclick="showChats()"><span class="nav-icon">💬</span><span class="nav-label">Mesajlar</span></button>
+    <button class="nav-item" onclick="showProfile()"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
+  </div>
+</div>
+
+<!-- ══════════════ LIKES (kim bəyəndi) ══════════════ -->
+<div id="likesScreen" class="screen">
+  <div class="screen-header">
+    <div class="screen-title">💝 Bəyənənlər</div>
+    <button class="topbar-btn" onclick="loadLikes()">🔄</button>
+  </div>
+  <div class="scrollable">
+    <div id="likesList" style="padding:12px 16px;display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-item" onclick="showSwipe()"><span class="nav-icon">🔥</span><span class="nav-label">Kəşf Et</span></button>
+    <button class="nav-item active" onclick="showLikes()"><span class="nav-icon">💝</span><span class="nav-label">Bəyənənlər</span></button>
+    <button class="nav-item" onclick="showChats()"><span class="nav-icon">💬</span><span class="nav-label">Mesajlar</span></button>
+    <button class="nav-item" onclick="showProfile()"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
+  </div>
+</div>
+
+<!-- ══════════════ CHATS ══════════════ -->
+<div id="chats" class="screen">
+  <div class="screen-header"><div class="screen-title">💬 Mesajlar</div><button class="topbar-btn" onclick="loadMatches()">🔄</button></div>
+  <div class="matches-row-label">YENİ UYĞUNLUQLAR</div>
+  <div class="matches-row" id="matchesRow"></div>
+  <div class="scrollable"><div class="conv-list" id="convList"></div></div>
+  <div class="bottom-nav">
+    <button class="nav-item" onclick="showSwipe()"><span class="nav-icon">🔥</span><span class="nav-label">Kəşf Et</span></button>
+    <button class="nav-item" onclick="showLikes()"><span class="nav-icon">💝</span><span class="nav-label">Bəyənənlər</span></button>
+    <button class="nav-item active" onclick="showChats()"><span class="nav-icon">💬</span><span class="nav-label">Mesajlar</span></button>
+    <button class="nav-item" onclick="showProfile()"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
+  </div>
+</div>
+
+<!-- ══════════════ CHAT DETAIL ══════════════ -->
+<div id="chatDetail" class="screen">
+  <div class="chat-header">
+    <button class="chat-back" onclick="showChats()">←</button>
+    <div class="chat-hav" id="chatAv" onclick="openActiveChatProfile()" style="cursor:pointer">😊</div>
+    <div style="cursor:pointer;flex:1" onclick="openActiveChatProfile()"><div class="chat-hname" id="chatName">-</div><div class="chat-hstatus">🟢 Aktiv</div></div>
+    <div style="position:relative">
+      <button class="topbar-btn" id="chatMenuBtn" onclick="toggleChatMenu()">⋮</button>
+      <div id="chatMenu" style="display:none;position:absolute;right:0;top:48px;background:white;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.15);min-width:180px;z-index:100;overflow:hidden">
+        <div onclick="doUnmatch()" style="padding:14px 18px;cursor:pointer;font-size:14px;font-weight:600;color:#ff6b35;border-bottom:1px solid #f8eef2">💔 Uyğunluğu Ləğv Et</div>
+        <div onclick="doBlock()" style="padding:14px 18px;cursor:pointer;font-size:14px;font-weight:600;color:var(--rose)">🚫 Blokla</div>
+      </div>
+    </div>
+  </div>
+  <div class="messages-area" id="messagesArea"></div>
+  <div class="chat-input-area">
+    <input class="chat-input" id="msgInput" placeholder="Mesaj yazın..." onkeydown="if(event.key==='Enter')sendMessage()">
+    <button class="send-btn" onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<!-- ══════════════ PROFILE VIEW ══════════════ -->
+<div id="profile" class="screen">
+  <div class="scrollable">
+    <div class="profile-header">
+      <div class="profile-photo-wrap" id="profilePhotoWrap" onclick="showEditProfile()">
+        <div class="profile-photo-fallback" id="profileAvatarEl">😊</div>
+        <div class="profile-edit-badge">✏️</div>
+      </div>
+      <div class="my-name" id="myName">-</div>
+      <div class="my-sub" id="mySub"></div>
+    </div>
+    <div class="profile-stats">
+      <div class="stat-item"><div class="stat-num" id="statLikes">0</div><div class="stat-label">Bəyəni</div></div>
+      <div class="stat-item"><div class="stat-num" id="statMatches">0</div><div class="stat-label">Uyğunluq</div></div>
+      <div class="stat-item"><div class="stat-num" id="statMsgs">0</div><div class="stat-label">Mesaj</div></div>
+    </div>
+    <div class="profile-bio-card" id="profileBioCard" style="display:none"><p id="profileBioText"></p></div>
+    <div class="profile-tags" id="profileTags"></div>
+    <div class="premium-banner" id="premiumBanner" onclick="showPremiumScreen()"><div class="premium-text"><div id="premiumBannerTitle"><h3>🌟 FLORT Premium</h3><p id="premiumBannerDesc">Limitsiz bəyəni · Üstün profil</p></div></div><div class="premium-price" id="premiumBannerPrice">9.99₼</div></div>
+    <div class="settings-list">
+      <div class="setting-card" onclick="showEditProfile()">
+        <div class="setting-left"><span class="setting-icon">✏️</span><div><div class="setting-title">Profili Redaktə Et</div><div class="setting-desc">Şəkil · Bio · Maraqlar · İş</div></div></div><span style="color:var(--muted)">›</span>
+      </div>
+      <div class="setting-card" onclick="doLogout()">
+        <div class="setting-left"><span class="setting-icon">🚪</span><div><div class="setting-title">Çıxış</div><div class="setting-desc">Hesabdan çıx</div></div></div><span style="color:var(--muted)">›</span>
+      </div>
+    </div>
+    <div style="height:24px"></div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-item" onclick="showSwipe()"><span class="nav-icon">🔥</span><span class="nav-label">Kəşf Et</span></button>
+    <button class="nav-item" onclick="showLikes()"><span class="nav-icon">💝</span><span class="nav-label">Bəyənənlər</span></button>
+    <button class="nav-item" onclick="showChats()"><span class="nav-icon">💬</span><span class="nav-label">Mesajlar</span></button>
+    <button class="nav-item active" onclick="showProfile()"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
+  </div>
+</div>
+
+<!-- ══════════════ OTHER PROFILE VIEW ══════════════ -->
+<div id="otherProfile" class="screen">
+  <div class="op-header">
+    <div class="op-photos" id="opPhotosMain">
+      <div class="op-photos-fallback" id="opFallback">😊</div>
+    </div>
+    <div class="op-photo-nav">
+      <div class="op-photo-nav-l" onclick="opPrevPhoto()"></div>
+      <div class="op-photo-nav-r" onclick="opNextPhoto()"></div>
+    </div>
+    <div class="op-photo-dots" id="opDots"></div>
+    <div class="op-gradient"></div>
+    <button class="op-back" id="opBackBtn">←</button>
+    <div class="op-name-wrap">
+      <div class="op-name" id="opName">-</div>
+      <div class="op-sub" id="opSub"></div>
+    </div>
+  </div>
+
+  <div class="scrollable">
+    <div class="op-body">
+
+      <!-- Bio -->
+      <div class="op-bio-box" id="opBioBox">
+        <div class="op-section-title">💬 Bio</div>
+        <p id="opBio"></p>
+      </div>
+
+      <!-- Details -->
+      <div class="op-details-box" id="opDetailsBox">
+        <div class="op-section-title">ℹ️ Məlumatlar</div>
+        <div id="opDetailRows"></div>
+      </div>
+
+      <!-- Interests -->
+      <div class="op-interests-box" id="opInterestsBox" style="display:none">
+        <div class="op-section-title">❤️ Maraqlar</div>
+        <div class="op-interest-tags" id="opInterestTags"></div>
+      </div>
+
+      <!-- All Photos -->
+      <div class="op-details-box" id="opAllPhotosBox" style="display:none">
+        <div class="op-section-title">📸 Bütün Şəkillər</div>
+        <div class="op-photos-grid" id="opPhotosGrid"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="op-action-bar">
+    <button class="op-btn-msg" id="opMsgBtn">💬 Mesaj Göndər</button>
+  </div>
+</div>
+
+<!-- FULLSCREEN PHOTO -->
+<div id="photoFullscreen" onclick="closeFullscreen()">
+  <button class="close-fs" onclick="closeFullscreen()">✕</button>
+  <img id="fullscreenImg" src="" alt="">
+</div>
+
+<!-- ══════════════ PREMIUM ══════════════ -->
+<div id="premiumScreen" class="screen">
+  <div class="edit-header">
+    <button class="edit-back" onclick="showProfile()">←</button>
+    <div class="edit-title">🌟 FLORT Premium</div>
+  </div>
+  <div class="scrollable">
+    <div style="padding:24px 20px 0;text-align:center">
+      <div style="font-size:56px;margin-bottom:8px">💎</div>
+      <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin-bottom:6px">Premium ol</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px">Limitsiz bəyəni ilə daha çox insanla tanış ol</div>
+    </div>
+
+    <!-- Features -->
+    <div style="background:white;margin:0 16px 16px;border-radius:18px;padding:20px;box-shadow:0 2px 14px rgba(0,0,0,.07)">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f8eef2">
+        <span style="font-size:22px">❤️</span>
+        <div><div style="font-weight:700;font-size:14px">Limitsiz Bəyəni</div><div style="font-size:12px;color:var(--muted)">Gündəlik limit yoxdur</div></div>
+        <span style="margin-left:auto;color:var(--mint);font-weight:700">✓</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f8eef2">
+        <span style="font-size:22px">💝</span>
+        <div><div style="font-weight:700;font-size:14px">Kim Bəyəndi</div><div style="font-size:12px;color:var(--muted)">Sizi bəyənənlər görünür</div></div>
+        <span style="margin-left:auto;color:var(--mint);font-weight:700">✓</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0">
+        <span style="font-size:22px">⭐</span>
+        <div><div style="font-weight:700;font-size:14px">Üstün Profil</div><div style="font-size:12px;color:var(--muted)">Axtarışda öndə çıx</div></div>
+        <span style="margin-left:auto;color:var(--mint);font-weight:700">✓</span>
+      </div>
+    </div>
+
+    <!-- Plans -->
+    <div style="padding:0 16px;display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+
+      <div class="plan-card" id="plan1m" onclick="selectPlan('1m')" data-price="9.99" data-months="1">
+        <div class="plan-left">
+          <div class="plan-name">1 Ay</div>
+          <div class="plan-sub">Aylıq abunəlik</div>
+        </div>
+        <div class="plan-price">9.99₼<span>/ay</span></div>
+      </div>
+
+      <div class="plan-card selected" id="plan6m" onclick="selectPlan('6m')" data-price="44.99" data-months="6">
+        <div class="plan-badge">Populyar</div>
+        <div class="plan-left">
+          <div class="plan-name">6 Ay</div>
+          <div class="plan-sub">7.50₼/ay — 25% endirim</div>
+        </div>
+        <div class="plan-price">44.99₼<span>/6 ay</span></div>
+      </div>
+
+      <div class="plan-card" id="plan12m" onclick="selectPlan('12m')" data-price="69.99" data-months="12">
+        <div class="plan-left">
+          <div class="plan-name">12 Ay</div>
+          <div class="plan-sub">5.83₼/ay — 41% endirim</div>
+        </div>
+        <div class="plan-price">69.99₼<span>/il</span></div>
+      </div>
+
+    </div>
+
+    <div style="padding:0 16px 32px">
+      <button id="buyBtn" onclick="doBuyPremium()" style="width:100%;background:linear-gradient(135deg,#FFD166,#ff9f43);color:#2d1320;border:none;padding:18px;border-radius:50px;font-size:17px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;box-shadow:0 8px 24px rgba(255,209,102,.4)">
+        💳 Ödəniş et — <span id="buyBtnPrice">44.99₼</span>
+      </button>
+      <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:10px">Stripe ilə təhlükəsiz ödəniş · İstənilən vaxt ləğv et</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ EDIT PROFILE ══════════════ -->
+<div id="editProfile" class="screen">
+  <div class="edit-header">
+    <button class="edit-back" onclick="showProfile()">←</button>
+    <div class="edit-title">✏️ Profili Redaktə Et</div>
+  </div>
+  <div class="scrollable">
+
+    <!-- PHOTOS -->
+    <div class="edit-section">
+      <div class="edit-section-title">📸 Şəkillərim (max 6)</div>
+      <div class="photos-grid" id="photosGrid"></div>
+      <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadPhoto(this)">
+    </div>
+
+    <!-- BASIC -->
+    <div class="edit-section">
+      <div class="edit-section-title">👤 Əsas Məlumat</div>
+      <div class="ef"><label>Ad</label><input type="text" id="editName" maxlength="30" placeholder="Adınız"></div>
+      <div class="ef"><label>Yaş</label><input type="number" id="editAge" min="18" max="99" placeholder="18-99"></div>
+      <div class="ef"><label>Şəhər</label><input type="text" id="editCity" placeholder="Bakı"></div>
+      <div class="ef"><label>Cins</label><select id="editGender"><option value="kişi">Kişi</option><option value="qadın">Qadın</option><option value="digər">Digər</option></select></div>
+      <div class="ef"><label>Kimi axtarırsınız</label><select id="editLooking"><option value="qadın">Qadın</option><option value="kişi">Kişi</option><option value="hər ikisi">Hər ikisi</option></select></div>
+    </div>
+
+    <!-- BIO -->
+    <div class="edit-section">
+      <div class="edit-section-title">💬 Bio</div>
+      <div class="ef">
+        <label>Özünüz haqqında</label>
+        <textarea id="editBio" maxlength="300" placeholder="Özünüz haqqında maraqlı bir şey..." oninput="document.getElementById('bioCount').textContent=this.value.length+'/300'"></textarea>
+        <div class="char-count" id="bioCount">0/300</div>
+      </div>
+    </div>
+
+    <!-- WORK -->
+    <div class="edit-section">
+      <div class="edit-section-title">💼 İş və Təhsil</div>
+      <div class="ef"><label>Peşə / İş yeri</label><input type="text" id="editJob" maxlength="60" placeholder="Məs: Mühəndis, Bakı Texniki Uni"></div>
+      <div class="ef"><label>Təhsil</label><input type="text" id="editEducation" maxlength="60" placeholder="Məs: BDU, Hüquq fakültəsi"></div>
+      <div class="ef"><label>Boy (sm)</label><input type="number" id="editHeight" min="140" max="220" placeholder="Məs: 175"></div>
+    </div>
+
+    <!-- INTERESTS -->
+    <div class="edit-section">
+      <div class="edit-section-title">❤️ Maraqlarım (max 8)</div>
+      <div class="interests-wrap" id="interestsWrap"></div>
+    </div>
+
+    <!-- EMOJI -->
+    <div class="edit-section">
+      <div class="edit-section-title">🎭 Avatar Emoji</div>
+      <div class="emoji-row" id="editEmojiGrid">
+        <div class="emoji-opt" data-emoji="😊" onclick="selEditEmoji(this)">😊</div>
+        <div class="emoji-opt" data-emoji="😎" onclick="selEditEmoji(this)">😎</div>
+        <div class="emoji-opt" data-emoji="🤩" onclick="selEditEmoji(this)">🤩</div>
+        <div class="emoji-opt" data-emoji="🥰" onclick="selEditEmoji(this)">🥰</div>
+        <div class="emoji-opt" data-emoji="😇" onclick="selEditEmoji(this)">😇</div>
+        <div class="emoji-opt" data-emoji="🌟" onclick="selEditEmoji(this)">🌟</div>
+        <div class="emoji-opt" data-emoji="🦋" onclick="selEditEmoji(this)">🦋</div>
+        <div class="emoji-opt" data-emoji="🌺" onclick="selEditEmoji(this)">🌺</div>
+        <div class="emoji-opt" data-emoji="🔥" onclick="selEditEmoji(this)">🔥</div>
+        <div class="emoji-opt" data-emoji="💫" onclick="selEditEmoji(this)">💫</div>
+        <div class="emoji-opt" data-emoji="✨" onclick="selEditEmoji(this)">✨</div>
+        <div class="emoji-opt" data-emoji="🎸" onclick="selEditEmoji(this)">🎸</div>
+      </div>
+    </div>
+    <div style="height:8px"></div>
+  </div>
+  <div class="save-bar">
+    <button class="save-btn" id="saveBtn" onclick="saveProfile()">💾 Yadda Saxla</button>
+  </div>
+</div>
+
+<script>
+// ══════════ SUPABASE ══════════
+const SUPABASE_URL  = 'https://rdsdnxttgalqhlyvbwgd.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkc2RueHR0Z2FscWhseXZid2dkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyODI1OTUsImV4cCI6MjA4ODg1ODU5NX0.5rI8KE-sDsQG7-cFHgNM1Voj5bC-zeFkYT4ElLs_YQ8';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ══════════ STATE ══════════
+let myProfile = null;
+let profiles = [], currentIdx = 0;
+let activeConvId = null, realtimeSub = null;
+let activeChatProfile = null;
+let regEmoji = '😊', editEmoji = '😊';
+let editInterests = [], photoSlots = [];
+
+const INTERESTS = ['🎵 Musiqi','📚 Kitab','✈️ Səyahət','🍕 Kulinariya','🎨 İncəsənət',
+  '📷 Fotoqrafiya','🏃 İdman','🎬 Kino','🎮 Oyun','🧘 Yoga','🏔️ Dağ','💻 Texnologiya',
+  '🎭 Teatr','🐶 Heyvanlar','🌿 Təbiət','🎹 Piano','🏊 Üzgüçülük','🚴 Velosiped','☕ Qəhvə','🍿 Netflix'];
+
+const BG = ['linear-gradient(135deg,#ffecd2,#fcb69f)','linear-gradient(135deg,#a18cd1,#fbc2eb)',
+  'linear-gradient(135deg,#fda085,#f6d365)','linear-gradient(135deg,#84fab0,#8fd3f4)',
+  'linear-gradient(135deg,#f093fb,#f5576c)','linear-gradient(135deg,#4facfe,#00f2fe)',
+  'linear-gradient(135deg,#43e97b,#38f9d7)','linear-gradient(135deg,#fa709a,#fee140)'];
+
+// ══════════ INIT ══════════
+async function init() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
+      await loadMyProfile(session.user.id);
+    } else {
+      hideLoading(); showScreen('auth');
+    }
+  } catch(e) {
+    console.error(e); hideLoading(); showScreen('auth');
+    toast('❌ Bağlantı xətası: ' + e.message);
+  }
+}
+
+async function loadMyProfile(userId) {
+  const { data, error } = await db.from('profiles').select('*').eq('user_id', userId).maybeSingle();
+  if (error) { console.error(error); hideLoading(); showScreen('auth'); toast('❌ ' + error.message); return; }
+  myProfile = data;
+  hideLoading();
+  if (myProfile) {
+    document.getElementById('splashName').textContent = myProfile.name;
+    showScreen('splash');
+  } else {
+    showScreen('auth');
+  }
+}
+
+function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+// ══════════ AUTH ══════════
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', tab==='login'?i===0:i===1));
+  document.getElementById('loginPanel').classList.toggle('active', tab==='login');
+  document.getElementById('registerPanel').classList.toggle('active', tab==='register');
+}
+
+function selRegEmoji(el) {
+  document.querySelectorAll('#regEmojiGrid .emoji-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected'); regEmoji = el.dataset.emoji;
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  if (!email||!pass) { toast('❗ Email və şifrə daxil edin'); return; }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled=true; btn.textContent='Daxil olunur...';
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+
+  btn.disabled=false; btn.innerHTML='🔑 Daxil ol';
+
+  if (error) {
+    console.error('Login error:', error);
+    if (error.message.includes('Email not confirmed')) {
+      toast('❌ Email təsdiqlənməyib — Supabase → Auth → Email → "Confirm email" söndürün');
+    } else if (error.message.includes('Invalid login')) {
+      toast('❌ Email və ya şifrə yanlışdır');
+    } else {
+      toast('❌ ' + error.message);
+    }
+    return;
+  }
+
+  document.getElementById('loadingOverlay').style.display='flex';
+  await loadMyProfile(data.user.id);
+}
+
+async function doRegister() {
+  const email  = document.getElementById('regEmail').value.trim();
+  const pass   = document.getElementById('regPass').value;
+  const name   = document.getElementById('regName').value.trim();
+  const age    = parseInt(document.getElementById('regAge').value);
+  const city   = document.getElementById('regCity').value.trim()||'Bakı';
+  const gender = document.getElementById('regGender').value;
+
+  if (!email) { toast('❗ Email daxil edin'); return; }
+  if (!pass||pass.length<6) { toast('❗ Şifrə min. 6 simvol'); return; }
+  if (!name) { toast('❗ Adınızı daxil edin'); return; }
+  if (!age||age<18) { toast('❗ Yaş min. 18 olmalıdır'); return; }
+
+  const btn = document.getElementById('regBtn');
+  btn.disabled=true; btn.textContent='Qeydiyyat olunur...';
+
+  // Step 1: Sign up
+  const { data: authData, error: authErr } = await db.auth.signUp({
+    email, password: pass,
+    options: { emailRedirectTo: null, data: { name } }
+  });
+
+  if (authErr) {
+    btn.disabled=false; btn.innerHTML='✨ Qeydiyyat';
+    if (authErr.message.includes('already')) {
+      toast('❌ Bu email artıq qeydiyyatdadır — daxil ol!');
+    } else {
+      toast('❌ ' + authErr.message);
+    }
+    return;
+  }
+
+  // Step 2: Sign in immediately to get session
+  const { data: sinData, error: sinErr } = await db.auth.signInWithPassword({ email, password: pass });
+
+  if (sinErr) {
+    btn.disabled=false; btn.innerHTML='✨ Qeydiyyat';
+    // Email confirmation required
+    if (sinErr.message.includes('Email not confirmed') || sinErr.message.includes('not confirmed')) {
+      toast('⚠️ Supabase Dashboard → Authentication → Providers → Email → "Confirm email" → OFF edin!');
+    } else {
+      toast('❌ Giriş xətası: ' + sinErr.message);
+    }
+    return;
+  }
+
+  const userId = sinData.user?.id;
+  if (!userId) {
+    btn.disabled=false; btn.innerHTML='✨ Qeydiyyat';
+    toast('❌ İstifadəçi ID tapılmadı'); return;
+  }
+
+  // Step 3: Create profile
+  const { data: prof, error: profErr } = await db.from('profiles').insert({
+    user_id: userId, name, age, city, gender, emoji: regEmoji,
+    looking_for: gender==='kişi'?'qadın':'kişi'
+  }).select().single();
+
+  btn.disabled=false; btn.innerHTML='✨ Qeydiyyat';
+
+  if (profErr) {
+    console.error('Profile error:', profErr);
+    if (profErr.code === '23505') {
+      // Profile already exists, just load it
+      await loadMyProfile(userId);
+      return;
+    }
+    toast('❌ Profil xətası: ' + profErr.message + ' (kod: ' + profErr.code + ')');
+    return;
+  }
+
+  myProfile = prof;
+  toast('✅ Xoş gəldiniz, ' + name + '!');
+  document.getElementById('splashName').textContent = name;
+  setTimeout(()=>showScreen('splash'), 500);
+}
+
+async function doLogout() {
+  await db.auth.signOut();
+  myProfile=null; profiles=[]; currentIdx=0;
+  if(realtimeSub){db.removeChannel(realtimeSub);realtimeSub=null;}
+  showScreen('auth'); toast('👋 Çıxış edildi');
+}
+
+// ══════════ SCREENS ══════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showSwipe()  { showScreen('swipe');  refreshProfiles(); loadTodayLikes(); }
+function showChats()  { showScreen('chats');  loadMatches(); }
+function showLikes()  { showScreen('likesScreen'); loadLikes(); }
+function showProfile(){ showScreen('profile'); renderProfileView(); loadStats(); updatePremiumBanner(); }
+
+// ══════════ BƏYƏNƏNLƏR ══════════
+// Likes cache - profile id -> profile object
+const likersCache = {};
+
+async function loadLikes() {
+  if (!myProfile) return;
+  const list = document.getElementById('likesList');
+  list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)"><div class="spinner" style="margin:0 auto 12px"></div>Yüklənir...</div>';
+
+  const { data: likedMe } = await db.from('swipes').select('swiper_id')
+    .eq('swiped_id', myProfile.id).in('direction', ['like','superlike']);
+
+  if (!likedMe || likedMe.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:50px 20px"><div style="font-size:48px;margin-bottom:12px">💝</div><div style="font-weight:700;font-size:16px;margin-bottom:6px">Hələ bəyəni yoxdur</div><div style="color:var(--muted);font-size:13px">Profillər kəşf et, bəyənilən!</div></div>';
+    return;
+  }
+
+  const { data: iSwiped } = await db.from('swipes').select('swiped_id').eq('swiper_id', myProfile.id);
+  const iSwipedIds = new Set((iSwiped || []).map(r => r.swiped_id));
+  const newLikerIds = likedMe.map(r => r.swiper_id).filter(id => !iSwipedIds.has(id));
+
+  if (newLikerIds.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:50px 20px"><div style="font-size:48px;margin-bottom:12px">✅</div><div style="font-weight:700;font-size:16px;margin-bottom:6px">Hamısına cavab verdiniz!</div><div style="color:var(--muted);font-size:13px">Yeni bəyənilər gözləyin</div></div>';
+    return;
+  }
+
+  const { data: likers } = await db.from('profiles').select('*').in('id', newLikerIds);
+  if (!likers || likers.length === 0) { list.innerHTML = ''; return; }
+
+  list.innerHTML = '';
+  likers.forEach(p => {
+    likersCache[p.id] = p;
+    const avHtml = p.photos && p.photos.length
+      ? '<img src="' + p.photos[0] + '" alt="' + p.name + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
+      : '<span style="font-size:32px">' + (p.emoji||'😊') + '</span>';
+    const tags = (p.interests||[]).slice(0,3).map(function(t){
+      return '<span style="background:#fff0f4;border:1px solid #ffd0dc;border-radius:12px;padding:3px 9px;font-size:11px;font-weight:600">' + t + '</span>';
+    }).join('');
+
+    const card = document.createElement('div');
+    card.style.cssText = 'background:white;border-radius:18px;padding:16px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 14px rgba(0,0,0,.07)';
+    card.dataset.card = p.id;
+
+    const leftDiv = document.createElement('div');
+    leftDiv.style.cssText = 'width:70px;height:70px;border-radius:50%;overflow:hidden;flex-shrink:0;border:3px solid var(--rose);display:flex;align-items:center;justify-content:center;background:var(--bg);cursor:pointer';
+    leftDiv.innerHTML = avHtml;
+    leftDiv.addEventListener('click', function(){ openOtherProfile(p, 'likesScreen'); });
+
+    const midDiv = document.createElement('div');
+    midDiv.style.cssText = 'flex:1;min-width:0;cursor:pointer';
+    midDiv.innerHTML = '<div style="font-weight:700;font-size:15px">' + p.name + ', ' + p.age + '</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-top:2px">📍 ' + (p.city||'Bakı') + (p.job?' · 💼 '+p.job:'') + '</div>'
+      + (tags ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">' + tags + '</div>' : '');
+    midDiv.addEventListener('click', function(){ openOtherProfile(p, 'likesScreen'); });
+
+    const btnDiv = document.createElement('div');
+    btnDiv.style.cssText = 'display:flex;flex-direction:column;gap:8px;flex-shrink:0';
+
+    const likeBtn = document.createElement('button');
+    likeBtn.style.cssText = 'width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--coral));border:none;font-size:20px;cursor:pointer;box-shadow:0 4px 12px var(--shadow)';
+    likeBtn.textContent = '❤️';
+    likeBtn.addEventListener('click', function(){ likeBack(p.id, card); });
+
+    const nopeBtn = document.createElement('button');
+    nopeBtn.style.cssText = 'width:44px;height:44px;border-radius:50%;background:white;border:2px solid #f0e0e5;font-size:18px;cursor:pointer';
+    nopeBtn.textContent = '❌';
+    nopeBtn.addEventListener('click', function(){ passLiker(p.id, card); });
+
+    btnDiv.appendChild(likeBtn);
+    btnDiv.appendChild(nopeBtn);
+    card.appendChild(leftDiv);
+    card.appendChild(midDiv);
+    card.appendChild(btnDiv);
+    list.appendChild(card);
+  });
+}
+
+
+// ══════════ OTHER PROFILE VIEW ══════════
+let opCurrentPhotos = [];
+let opCurrentPhotoIdx = 0;
+let opFromScreen = 'chats';
+let opCurrentProfile = null;
+
+async function openOtherProfile(profileIdOrObj, fromScreen) {
+  opFromScreen = fromScreen || 'chats';
+  let p = typeof profileIdOrObj === 'object' ? profileIdOrObj : null;
+  if (!p) {
+    const { data } = await db.from('profiles').select('*').eq('id', profileIdOrObj).single();
+    p = data;
+  }
+  if (!p) { toast('❌ Profil tapılmadı'); return; }
+  opCurrentProfile = p;
+  opCurrentPhotos = p.photos || [];
+  opCurrentPhotoIdx = 0;
+
+  document.getElementById('opBackBtn').onclick = () => showScreen(opFromScreen);
+
+  renderOpPhoto();
+
+  const dotsEl = document.getElementById('opDots');
+  dotsEl.innerHTML = opCurrentPhotos.length > 1
+    ? opCurrentPhotos.map((_,i) => `<div class="cdot${i===0?' active':''}"></div>`).join('') : '';
+
+  document.getElementById('opName').textContent = p.name + (p.age ? ', ' + p.age : '');
+  const subs = [];
+  if (p.city) subs.push('📍 ' + p.city);
+  if (p.height) subs.push(p.height + ' sm');
+  document.getElementById('opSub').textContent = subs.join(' · ');
+
+  const bioBox = document.getElementById('opBioBox');
+  if (p.bio) { bioBox.style.display = ''; document.getElementById('opBio').textContent = p.bio; }
+  else bioBox.style.display = 'none';
+
+  const rows = [];
+  if (p.job)       rows.push(`<div class="op-detail-row"><span class="op-detail-icon">💼</span><span class="op-detail-text">${p.job}</span></div>`);
+  if (p.education) rows.push(`<div class="op-detail-row"><span class="op-detail-icon">🎓</span><span class="op-detail-text">${p.education}</span></div>`);
+  if (p.gender)    rows.push(`<div class="op-detail-row"><span class="op-detail-icon">${p.gender==='kişi'?'👨':'👩'}</span><span class="op-detail-text">${p.gender==='kişi'?'Kişi':p.gender==='qadın'?'Qadın':'Digər'}</span></div>`);
+  if (p.city)      rows.push(`<div class="op-detail-row"><span class="op-detail-icon">📍</span><span class="op-detail-text">${p.city}</span></div>`);
+  if (p.height)    rows.push(`<div class="op-detail-row"><span class="op-detail-icon">📏</span><span class="op-detail-text">${p.height} sm</span></div>`);
+  const detailBox = document.getElementById('opDetailsBox');
+  if (rows.length) { detailBox.style.display = ''; document.getElementById('opDetailRows').innerHTML = rows.join(''); }
+  else detailBox.style.display = 'none';
+
+  const interBox = document.getElementById('opInterestsBox');
+  if (p.interests && p.interests.length) {
+    interBox.style.display = '';
+    document.getElementById('opInterestTags').innerHTML = p.interests.map(i => `<span class="op-interest-tag">${i}</span>`).join('');
+  } else interBox.style.display = 'none';
+
+  const allPhotosBox = document.getElementById('opAllPhotosBox');
+  if (opCurrentPhotos.length > 1) {
+    allPhotosBox.style.display = '';
+    document.getElementById('opPhotosGrid').innerHTML = opCurrentPhotos.map((url, i) =>
+      `<img src="${url}" alt="foto ${i+1}" onclick="openFullscreen('${url}')">`).join('');
+  } else allPhotosBox.style.display = 'none';
+
+  const msgBtn = document.getElementById('opMsgBtn');
+  const { data: match } = await db.from('matches').select('id')
+    .or(`and(profile_1_id.eq.${myProfile.id},profile_2_id.eq.${p.id}),and(profile_1_id.eq.${p.id},profile_2_id.eq.${myProfile.id})`)
+    .maybeSingle();
+  if (match) {
+    msgBtn.disabled = false; msgBtn.textContent = '💬 Mesaj Göndər';
+    msgBtn.onclick = () => openChatWith(p);
+  } else {
+    msgBtn.disabled = true; msgBtn.textContent = '🔒 Əvvəlcə uyğunlaşın';
+  }
+
+  showScreen('otherProfile');
+}
+
+function renderOpPhoto() {
+  const wrap = document.getElementById('opPhotosMain');
+  const fallback = document.getElementById('opFallback');
+  let img = wrap.querySelector('img');
+  if (opCurrentPhotos.length > 0) {
+    if (!img) { img = document.createElement('img'); img.style.cssText='width:100%;height:100%;object-fit:cover;display:block'; wrap.prepend(img); }
+    img.src = opCurrentPhotos[opCurrentPhotoIdx];
+    img.onclick = () => openFullscreen(opCurrentPhotos[opCurrentPhotoIdx]);
+    if (fallback) fallback.style.display = 'none';
+  } else {
+    if (img) img.remove();
+    if (fallback) { fallback.style.display = 'flex'; fallback.textContent = opCurrentProfile?.emoji || '😊'; }
+  }
+  document.querySelectorAll('#opDots .cdot').forEach((d,i) => d.classList.toggle('active', i === opCurrentPhotoIdx));
+}
+
+function opNextPhoto() {
+  if (opCurrentPhotos.length < 2) return;
+  opCurrentPhotoIdx = (opCurrentPhotoIdx + 1) % opCurrentPhotos.length;
+  renderOpPhoto();
+}
+function opPrevPhoto() {
+  if (opCurrentPhotos.length < 2) return;
+  opCurrentPhotoIdx = ((opCurrentPhotoIdx - 1) + opCurrentPhotos.length) % opCurrentPhotos.length;
+  renderOpPhoto();
+}
+function openFullscreen(url) {
+  document.getElementById('fullscreenImg').src = url;
+  document.getElementById('photoFullscreen').classList.add('show');
+}
+function closeFullscreen() {
+  document.getElementById('photoFullscreen').classList.remove('show');
+}
+
+async function likeBack(targetId, cardEl) {
+  const { error } = await db.from('swipes').upsert(
+    { swiper_id: myProfile.id, swiped_id: targetId, direction: 'like' },
+    { onConflict: 'swiper_id,swiped_id' }
+  );
+  if (error) { toast('❌ Xəta: ' + error.message); return; }
+  // Match avtomatik trigger ilə yaranır — yoxla
+  const { data: mutual } = await db.from('matches').select('id')
+    .or(`and(profile_1_id.eq.${myProfile.id},profile_2_id.eq.${targetId}),and(profile_1_id.eq.${targetId},profile_2_id.eq.${myProfile.id})`)
+    .maybeSingle();
+  if (cardEl) cardEl.style.cssText += 'opacity:0;transform:translateX(100px);transition:all .4s';
+  setTimeout(() => { if (cardEl) cardEl.remove(); }, 400);
+  if (mutual) {
+    const { data: p } = await db.from('profiles').select('*').eq('id', targetId).single();
+    if (p) setTimeout(() => showMatchBanner(p), 300);
+  } else {
+    toast('❤️ Bəyəndiniz!');
+  }
+}
+
+async function passLiker(targetId, cardEl) {
+  await db.from('swipes').upsert(
+    { swiper_id: myProfile.id, swiped_id: targetId, direction: 'nope' },
+    { onConflict: 'swiper_id,swiped_id' }
+  );
+  if (cardEl) cardEl.style.cssText += 'opacity:0;transform:translateX(-100px);transition:all .4s';
+  setTimeout(() => { if (cardEl) cardEl.remove(); }, 400);
+}
+
+// ══════════ PROFILE VIEW ══════════
+function renderProfileView() {
+  if (!myProfile) return;
+  const p = myProfile;
+  const wrap = document.getElementById('profilePhotoWrap');
+  const avEl = document.getElementById('profileAvatarEl');
+  if (p.photos && p.photos.length > 0) {
+    wrap.innerHTML = `<img src="${p.photos[0]}" alt="profil"><div class="profile-edit-badge">✏️</div>`;
+    wrap.onclick = showEditProfile;
+  } else {
+    avEl.textContent = p.emoji || '😊';
+  }
+  document.getElementById('myName').textContent = p.name;
+  const subs = [];
+  if (p.city) subs.push('📍 '+p.city);
+  if (p.age)  subs.push(p.age+' yaş');
+  if (p.height) subs.push(p.height+' sm');
+  document.getElementById('mySub').textContent = subs.join(' · ');
+  const bioCard = document.getElementById('profileBioCard');
+  if (p.bio) { bioCard.style.display='block'; document.getElementById('profileBioText').textContent=p.bio; }
+  else bioCard.style.display='none';
+  const tags = [];
+  if (p.job)       tags.push('💼 '+p.job);
+  if (p.education) tags.push('🎓 '+p.education);
+  if (p.interests&&p.interests.length) p.interests.forEach(i=>tags.push(i));
+  document.getElementById('profileTags').innerHTML = tags.map(t=>`<span class="profile-tag">${t}</span>`).join('');
+}
+
+async function loadStats() {
+  if (!myProfile) return;
+  const [l,m,msg] = await Promise.all([
+    db.from('swipes').select('id',{count:'exact',head:true}).eq('swiped_id',myProfile.id).eq('direction','like'),
+    db.from('matches').select('id',{count:'exact',head:true}).or(`profile_1_id.eq.${myProfile.id},profile_2_id.eq.${myProfile.id}`),
+    db.from('messages').select('id',{count:'exact',head:true}).eq('sender_id',myProfile.id),
+  ]);
+  document.getElementById('statLikes').textContent   = l.count||0;
+  document.getElementById('statMatches').textContent = m.count||0;
+  document.getElementById('statMsgs').textContent    = msg.count||0;
+}
+
+// ══════════ EDIT PROFILE ══════════
+function showEditProfile() {
+  showScreen('editProfile');
+  if (!myProfile) return;
+  const p = myProfile;
+  document.getElementById('editName').value      = p.name||'';
+  document.getElementById('editAge').value       = p.age||'';
+  document.getElementById('editCity').value      = p.city||'';
+  document.getElementById('editBio').value       = p.bio||'';
+  document.getElementById('editJob').value       = p.job||'';
+  document.getElementById('editEducation').value = p.education||'';
+  document.getElementById('editHeight').value   = p.height||'';
+  document.getElementById('editGender').value    = p.gender||'kişi';
+  document.getElementById('editLooking').value   = p.looking_for||'qadın';
+  document.getElementById('bioCount').textContent = (p.bio||'').length+'/300';
+  editEmoji = p.emoji||'😊';
+  editInterests = [...(p.interests||[])];
+  photoSlots = [...(p.photos||[]),null,null,null,null,null,null].slice(0,6);
+  // Emoji
+  document.querySelectorAll('#editEmojiGrid .emoji-opt').forEach(el=>el.classList.toggle('selected',el.dataset.emoji===editEmoji));
+  renderInterests();
+  renderPhotos();
+}
+
+function selEditEmoji(el) {
+  document.querySelectorAll('#editEmojiGrid .emoji-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected'); editEmoji=el.dataset.emoji;
+}
+
+function renderInterests() {
+  document.getElementById('interestsWrap').innerHTML = INTERESTS.map(i=>
+    `<div class="ichip ${editInterests.includes(i)?'sel':''}" onclick="toggleInterest(this,'${i}')">${i}</div>`
+  ).join('');
+}
+
+function toggleInterest(el,val) {
+  const idx=editInterests.indexOf(val);
+  if(idx===-1){if(editInterests.length>=8){toast('❗ Max 8 maraq');return;}editInterests.push(val);el.classList.add('sel');}
+  else{editInterests.splice(idx,1);el.classList.remove('sel');}
+}
+
+function renderPhotos() {
+  const grid = document.getElementById('photosGrid');
+  grid.innerHTML='';
+  for(let i=0;i<6;i++){
+    const slot=document.createElement('div');
+    slot.className='photo-slot';
+    if(photoSlots[i]){
+      slot.innerHTML=`<img src="${photoSlots[i]}" alt="foto"><button class="photo-del" onclick="delPhoto(${i},event)">×</button>`;
+    } else {
+      slot.innerHTML=`<div class="padd">📷</div><div class="ptxt">${i===0?'Əsas şəkil':'Şəkil əlavə et'}</div>`;
+      slot.onclick=()=>{ document.getElementById('photoInput').dataset.slot=i; document.getElementById('photoInput').click(); };
+    }
+    grid.appendChild(slot);
+  }
+}
+
+function delPhoto(idx,e) {
+  e.stopPropagation();
+  photoSlots[idx]=null;
+  photoSlots=[...photoSlots.filter(Boolean),...Array(6).fill(null)].slice(0,6);
+  renderPhotos();
+}
+
+async function uploadPhoto(input) {
+  const file=input.files[0]; if(!file) return;
+  const idx=parseInt(input.dataset.slot||0);
+  const slots=document.getElementById('photosGrid').querySelectorAll('.photo-slot');
+  if(slots[idx]) slots[idx].innerHTML='<div class="photo-uploading"><div class="spinner"></div></div>';
+  try {
+    const ext=file.name.split('.').pop()||'jpg';
+    const fname=`${myProfile.id}_${idx}_${Date.now()}.${ext}`;
+    const {error}=await db.storage.from('avatars').upload(fname,file,{upsert:true,contentType:file.type});
+    if(error) throw error;
+    const {data:ud}=db.storage.from('avatars').getPublicUrl(fname);
+    photoSlots[idx]=ud.publicUrl;
+    toast('✅ Şəkil yükləndi!');
+  } catch(e) {
+    console.error(e); toast('❌ Yükləmə xətası: '+e.message);
+    photoSlots[idx]=null;
+  }
+  renderPhotos(); input.value='';
+}
+
+async function saveProfile() {
+  const name=document.getElementById('editName').value.trim();
+  const age=parseInt(document.getElementById('editAge').value);
+  if(!name){toast('❗ Ad mütləqdir');return;}
+  if(!age||age<18){toast('❗ Yaş min. 18');return;}
+  const btn=document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent='Saxlanır...';
+  const updates={
+    name, age,
+    city:       document.getElementById('editCity').value.trim()||'Bakı',
+    bio:        document.getElementById('editBio').value.trim(),
+    job:        document.getElementById('editJob').value.trim(),
+    education:  document.getElementById('editEducation').value.trim(),
+    height:     parseInt(document.getElementById('editHeight').value)||null,
+    gender:     document.getElementById('editGender').value,
+    looking_for:document.getElementById('editLooking').value,
+    emoji:      editEmoji,
+    interests:  editInterests,
+    photos:     photoSlots.filter(Boolean),
+    updated_at: new Date().toISOString()
+  };
+  const {data,error}=await db.from('profiles').update(updates).eq('id',myProfile.id).select().single();
+  btn.disabled=false; btn.textContent='💾 Yadda Saxla';
+  if(error){toast('❌ '+error.message);return;}
+  myProfile=data;
+  toast('✅ Profil yeniləndi!');
+  setTimeout(()=>showProfile(),500);
+}
+
+// ══════════ CARDS ══════════
+async function refreshProfiles() {
+  if (!myProfile) return;
+  const {data:sw}=await db.from('swipes').select('swiped_id').eq('swiper_id',myProfile.id);
+  const excl=[...(sw||[]).map(r=>r.swiped_id),myProfile.id];
+  let q=db.from('profiles').select('*').eq('is_active',true);
+  if(myProfile.looking_for&&myProfile.looking_for!=='hər ikisi') q=q.eq('gender',myProfile.looking_for);
+  q=q.not('id','in',`(${excl.join(',')})`).limit(20);
+  const {data,error}=await q;
+  if(error){console.error(error);toast('❌ Profillər yüklənmədi');return;}
+  profiles=data||[]; currentIdx=0; renderCards();
+}
+
+function renderCards() {
+  const stack=document.getElementById('cardStack');
+  const actions=document.getElementById('swipeActions');
+  const empty=document.getElementById('emptyState');
+  if(profiles.length-currentIdx===0){stack.innerHTML='';empty.classList.add('show');actions.style.display='none';return;}
+  empty.classList.remove('show'); actions.style.display=''; stack.innerHTML='';
+  for(let i=Math.min(currentIdx+2,profiles.length-1);i>=currentIdx;i--){
+    const pos=i-currentIdx;
+    const card=makeCard(profiles[i],pos);
+    stack.appendChild(card);
+    if(pos===0){card.style.animation='cardReveal .4s ease both';setupDrag(card);}
+  }
+}
+
+function makeCard(p,pos) {
+  const el=document.createElement('div');
+  el.className='profile-card'+(pos===0?' is-top':pos===1?' behind-1':' behind-2');
+  const photos=p.photos&&p.photos.length?p.photos:[];
+  if(photos.length) photoCache[p.id]=photos;
+  const photoHtml=photos.length
+    ?`<img src="${photos[0]}" alt="${p.name}" onerror="this.parentElement.innerHTML='<div class=\\'card-photo-fallback\\'>${p.emoji||'😊'}</div>'">`
+    :`<div class="card-photo-fallback" style="background:${BG[Math.floor(Math.random()*BG.length)]}">${p.emoji||'😊'}</div>`;
+  const dots=photos.length>1?photos.map((_,i)=>`<div class="cdot${i===0?' active':''}"></div>`).join(''):'';
+  const tags=(p.interests||[]).slice(0,3).map(t=>`<span class="card-tag">${t}</span>`).join('');
+  el.innerHTML=`
+    <div class="card-photo" id="cp-${p.id}">${photoHtml}
+      <div class="card-gradient"></div>
+      ${dots?`<div class="card-dots">${dots}</div>`:''}
+      <div class="card-photo-nav"><div class="card-photo-nav-left" onclick="prevPhoto('${p.id}')"></div><div class="card-photo-nav-right" onclick="nextPhoto('${p.id}')"></div></div>
+      <div class="card-info">
+        <div class="card-name">${p.name} <span class="card-age">${p.age}</span></div>
+        <div class="card-location">📍 ${p.city||'Bakı'}${p.height?' · '+p.height+' sm':''}</div>
+        ${p.job?`<div class="card-job">💼 ${p.job}</div>`:''}
+        ${tags?`<div class="card-tags">${tags}</div>`:''}
+      </div>
+    </div>
+    <div class="card-body"><div class="card-bio">${p.bio||'Bio əlavə edilməyib...'}</div></div>
+    <div class="stamp stamp-like">💚 BƏYƏNDİM</div>
+    <div class="stamp stamp-nope">❌ KEÇ</div>
+  `;
+  return el;
+}
+
+// Photo navigation on card
+const photoIdxMap={};
+const photoCache={};
+function nextPhoto(pid){
+  const photos=photoCache[pid]; if(!photos||photos.length<2)return;
+  photoIdxMap[pid]=(((photoIdxMap[pid]||0)+1)%photos.length);
+  updateCardPhoto(pid,photos);
+}
+function prevPhoto(pid){
+  const photos=photoCache[pid]; if(!photos||photos.length<2)return;
+  const len=photos.length;
+  photoIdxMap[pid]=((((photoIdxMap[pid]||0)-1)%len)+len)%len;
+  updateCardPhoto(pid,photos);
+}
+function updateCardPhoto(pid,photos){
+  const cp=document.getElementById('cp-'+pid); if(!cp)return;
+  const idx=photoIdxMap[pid]||0;
+  const img=cp.querySelector('img');
+  if(img) img.src=photos[idx];
+  cp.querySelectorAll('.cdot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+}
+
+function setupDrag(card) {
+  let sx,sy,dragging=false;
+  const start=(x,y)=>{sx=x;sy=y;dragging=true;card.style.transition='none';};
+  const move=(x,y)=>{
+    if(!dragging)return;
+    const dx=x-sx,dy=y-sy;
+    card.style.transform=`translate(${dx}px,${dy}px) rotate(${dx*.08}deg)`;
+    const sl=card.querySelector('.stamp-like'),sn=card.querySelector('.stamp-nope');
+    if(dx>60){sl.style.opacity=Math.min((dx-60)/60,1);sn.style.opacity=0;}
+    else if(dx<-60){sn.style.opacity=Math.min((-dx-60)/60,1);sl.style.opacity=0;}
+    else{sl.style.opacity=0;sn.style.opacity=0;}
+  };
+  const end=(x)=>{
+    if(!dragging)return; dragging=false; card.style.transition='';
+    const dx=x-sx;
+    if(dx>100)doSwipe('right');
+    else if(dx<-100)doSwipe('left');
+    else{card.style.transform='';card.querySelectorAll('.stamp').forEach(s=>s.style.opacity=0);}
+  };
+  card.addEventListener('mousedown',e=>{if(!e.target.closest('.card-photo-nav'))start(e.clientX,e.clientY);});
+  document.addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+  document.addEventListener('mouseup',e=>end(e.clientX));
+  card.addEventListener('touchstart',e=>{if(!e.target.closest('.card-photo-nav'))start(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+  document.addEventListener('touchmove',e=>move(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  document.addEventListener('touchend',e=>end(e.changedTouches[0].clientX));
+}
+
+// ══════════ PREMIUM & LİMİT ══════════
+const FREE_DAILY_LIMIT = 10;
+let todayLikes = 0;
+
+function isPremium() {
+  if (!myProfile) return false;
+  if (!myProfile.is_premium) return false;
+  if (!myProfile.premium_expires_at) return false;
+  return new Date(myProfile.premium_expires_at) > new Date();
+}
+
+async function loadTodayLikes() {
+  if (!myProfile) return;
+  if (isPremium()) {
+    document.getElementById('likeCounter').style.display = 'none';
+    return;
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const { count } = await db.from('swipes')
+    .select('id', { count: 'exact', head: true })
+    .eq('swiper_id', myProfile.id)
+    .in('direction', ['like', 'superlike'])
+    .gte('created_at', today + 'T00:00:00.000Z');
+  todayLikes = count || 0;
+  updateLikeCounter();
+}
+
+function updateLikeCounter() {
+  if (isPremium()) { document.getElementById('likeCounter').style.display = 'none'; return; }
+  const el = document.getElementById('likeCounter');
+  const txt = document.getElementById('likeCountText');
+  const fill = document.getElementById('likeCountFill');
+  el.style.display = 'flex';
+  const remaining = Math.max(0, FREE_DAILY_LIMIT - todayLikes);
+  txt.textContent = remaining + '/' + FREE_DAILY_LIMIT + ' bəyəni qaldı';
+  fill.style.width = Math.min(100, (todayLikes / FREE_DAILY_LIMIT) * 100) + '%';
+  if (remaining === 0) {
+    el.style.background = '#fff0f0';
+    txt.style.color = 'var(--rose)';
+  }
+}
+
+function showPremiumScreen() {
+  showScreen('premiumScreen');
+  updatePremiumBanner();
+}
+
+function updatePremiumBanner() {
+  const banner = document.getElementById('premiumBanner');
+  const desc = document.getElementById('premiumBannerDesc');
+  const price = document.getElementById('premiumBannerPrice');
+  if (!banner) return;
+  if (isPremium()) {
+    const exp = new Date(myProfile.premium_expires_at).toLocaleDateString('az-AZ');
+    desc.textContent = 'Aktiv — ' + exp + ' tarixinə qədər';
+    price.textContent = '✅';
+  } else {
+    desc.textContent = 'Limitsiz bəyəni · Üstün profil';
+    price.textContent = '9.99₼';
+  }
+}
+
+let selectedPlan = '6m';
+const plans = { '1m': { price: 9.99, label: '9.99₼' }, '6m': { price: 44.99, label: '44.99₼' }, '12m': { price: 69.99, label: '69.99₼' } };
+
+function selectPlan(planId) {
+  selectedPlan = planId;
+  document.querySelectorAll('.plan-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById('plan' + planId).classList.add('selected');
+  document.getElementById('buyBtnPrice').textContent = plans[planId].label;
+}
+
+const STRIPE_PK = 'pk_live_51SujxSRu5DOTMe9yO8YjoesZMbIyukceYDWReAdY0ZDRBuEfhhA2hv4k1gHVtTTJZorL0aAuaR0jVnV5EFRT0UD6001ACF2RFe';
+const SUPABASE_FUNCTIONS_URL = 'https://rdsdnxttgalqhlyvbwgd.supabase.co/functions/v1';
+
+async function doBuyPremium() {
+  if (!myProfile) { toast('❗ Əvvəlcə daxil olun'); return; }
+  if (isPremium()) { toast('✅ Artıq Premium istifadəçisiniz!'); return; }
+
+  const btn = document.getElementById('buyBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:22px;height:22px;margin:0 auto"></div>';
+
+  try {
+    const successUrl = 'https://flort.az?premium=success';
+    const cancelUrl  = 'https://flort.az?premium=cancel';
+
+    const resp = await fetch(SUPABASE_FUNCTIONS_URL + '/create-checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON,
+      },
+      body: JSON.stringify({
+        planId: selectedPlan,
+        profileId: myProfile.id,
+        successUrl,
+        cancelUrl,
+      })
+    });
+
+    const data = await resp.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Checkout yaradılmadı');
+    }
+  } catch (e) {
+    toast('❌ Xəta: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '💳 Ödəniş et — <span id="buyBtnPrice">' + plans[selectedPlan].label + '</span>';
+  }
+}
+
+// Ödəniş uğurlu qayıdışını yoxla
+async function checkPremiumReturn() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('premium') === 'success') {
+    // URL-i təmizlə
+    window.history.replaceState({}, '', window.location.pathname);
+    // Profili yenilə
+    await loadMyProfile(myProfile?.user_id || (await db.auth.getUser()).data.user?.id);
+    toast('🎉 Premium aktivləşdi! Xoş gəldiniz!');
+  } else if (params.get('premium') === 'cancel') {
+    window.history.replaceState({}, '', window.location.pathname);
+    toast('❌ Ödəniş ləğv edildi');
+  }
+}
+
+// ══════════ SWIPE ══════════
+async function doSwipe(dir) {
+  if(currentIdx>=profiles.length||!myProfile)return;
+
+  // Pulsuz istifadəçi limit yoxlaması
+  if ((dir === 'right' || dir === 'up') && !isPremium()) {
+    if (todayLikes >= FREE_DAILY_LIMIT) {
+      toast('❤️ Günlük 10 bəyəni limitiniz dolub! Premium al 🌟');
+      setTimeout(() => showPremiumScreen(), 1200);
+      return;
+    }
+  }
+
+  const target=profiles[currentIdx];
+  const stack=document.getElementById('cardStack');
+  const top=stack.querySelector('.is-top');
+  if(top){top.style.transition='transform .5s ease,opacity .5s ease';top.style.opacity='0';
+    top.style.transform=dir==='right'?'translateX(150%) rotate(20deg)':'translateX(-150%) rotate(-20deg)';}
+  const direction=dir==='right'?'like':'nope';
+  const {error}=await db.from('swipes').upsert({swiper_id:myProfile.id,swiped_id:target.id,direction},{onConflict:'swiper_id,swiped_id'});
+  if(!error && direction==='like'){
+    todayLikes++;
+    updateLikeCounter();
+    const {data:mutual}=await db.from('swipes').select('id')
+      .eq('swiper_id',target.id).eq('swiped_id',myProfile.id)
+      .in('direction',['like','superlike']).maybeSingle();
+    if(mutual) setTimeout(()=>showMatchBanner(target),300);
+  }
+  currentIdx++; setTimeout(renderCards,450);
+}
+
+function actionLike() { doSwipe('right'); }
+function actionNope() { doSwipe('left');  }
+
+// ══════════ MATCH ══════════
+function showMatchBanner(p) {
+  document.getElementById('matchName').textContent=p.name;
+  // Their avatar
+  const theirAv=document.getElementById('theirMatchAv');
+  if(p.photos&&p.photos.length) theirAv.innerHTML=`<img src="${p.photos[0]}" alt="${p.name}">`;
+  else document.getElementById('theirMatchEmoji').textContent=p.emoji||'😍';
+  // My avatar
+  const myAv=document.getElementById('myMatchAv');
+  if(myProfile?.photos&&myProfile.photos.length) myAv.innerHTML=`<img src="${myProfile.photos[0]}" alt="mən">`;
+  else document.getElementById('myMatchEmoji').textContent=myProfile?.emoji||'😊';
+  document.getElementById('matchMsgBtn').onclick=()=>{hideMatch();openChatWith(p);};
+  document.getElementById('matchBanner').classList.add('show');
+}
+function hideMatch(){document.getElementById('matchBanner').classList.remove('show');}
+
+// ══════════ CHATS ══════════
+async function loadMatches() {
+  if(!myProfile)return;
+  const {data:mrows}=await db.from('matches').select('*')
+    .or(`profile_1_id.eq.${myProfile.id},profile_2_id.eq.${myProfile.id}`)
+    .eq('is_active',true).order('matched_at',{ascending:false});
+  if(!mrows?.length){
+    document.getElementById('matchesRow').innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px">Hələ uyğunluq yoxdur 💔</div>';
+    document.getElementById('convList').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px">Profillər kəşf et! 🔥</div>';
+    return;
+  }
+  const oids=mrows.map(m=>m.profile_1_id===myProfile.id?m.profile_2_id:m.profile_1_id);
+  const {data:others}=await db.from('profiles').select('*').in('id',oids);
+  const pm=Object.fromEntries((others||[]).map(p=>[p.id,p]));
+
+  // Matches row
+  const matchesRow = document.getElementById('matchesRow');
+  matchesRow.innerHTML = '';
+  mrows.forEach(m => {
+    const oid = m.profile_1_id===myProfile.id ? m.profile_2_id : m.profile_1_id;
+    const op = pm[oid]; if(!op) return;
+    const avHtml = op.photos&&op.photos.length ? '<img src="'+op.photos[0]+'" alt="'+op.name+'">' : (op.emoji||'😊');
+    const wrap = document.createElement('div');
+    wrap.className = 'match-thumb';
+    const av = document.createElement('div');
+    av.className = 'match-thumb-av'; av.style.cursor='pointer';
+    av.innerHTML = avHtml;
+    av.addEventListener('click', function(){ openOtherProfile(op, 'chats'); });
+    const nm = document.createElement('div');
+    nm.className = 'match-thumb-name'; nm.style.cursor='pointer';
+    nm.textContent = op.name;
+    nm.addEventListener('click', function(){ openChatWith(op); });
+    wrap.appendChild(av); wrap.appendChild(nm);
+    matchesRow.appendChild(wrap);
+  });
+
+  // Conv list
+  const convList=document.getElementById('convList');
+  convList.innerHTML='';
+  for(const m of mrows){
+    const oid=m.profile_1_id===myProfile.id?m.profile_2_id:m.profile_1_id;
+    const op=pm[oid]; if(!op)continue;
+    const {data:conv}=await db.from('conversations').select('id').eq('match_id',m.id).maybeSingle();
+    if(!conv)continue;
+    const {data:last}=await db.from('messages').select('*').eq('conversation_id',conv.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
+    const item=document.createElement('div');
+    item.className='conv-item';
+    const avHtml=op.photos?.length?`<img src="${op.photos[0]}" alt="${op.name}">`:(op.emoji||'😊');
+    const avEl2 = document.createElement('div');
+    avEl2.className = 'conv-av'; avEl2.style.cursor='pointer';
+    avEl2.innerHTML = avHtml;
+    avEl2.addEventListener('click', function(){ openOtherProfile(op, 'chats'); });
+    const detailEl = document.createElement('div');
+    detailEl.className = 'conv-details'; detailEl.style.cssText='flex:1;min-width:0;cursor:pointer';
+    detailEl.innerHTML = '<div class="conv-name">'+op.name+'</div><div class="conv-msg">'+(last?last.content:'💌 Söhbəti başladın!')+'</div>';
+    detailEl.addEventListener('click', function(){ openChatWith(op); });
+    const timeEl = document.createElement('div');
+    timeEl.className = 'conv-time';
+    timeEl.textContent = last ? timeAgo(last.created_at) : '';
+    const menuWrap = document.createElement('div');
+    menuWrap.style.cssText = 'position:relative;flex-shrink:0';
+    const menuBtn = document.createElement('button');
+    menuBtn.style.cssText = 'background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:4px 8px;border-radius:8px';
+    menuBtn.textContent = '⋮';
+    const menuDrop = document.createElement('div');
+    menuDrop.style.cssText = 'display:none;position:absolute;right:0;top:34px;background:white;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.15);min-width:180px;z-index:100;overflow:hidden';
+    menuDrop.innerHTML = '<div style="padding:13px 16px;cursor:pointer;font-size:13px;font-weight:600;color:#ff6b35;border-bottom:1px solid #f8eef2">💔 Uyğunluğu Ləğv Et</div>'
+      + '<div style="padding:13px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--rose)">🚫 Blokla</div>';
+    menuBtn.addEventListener('click', function(e){ e.stopPropagation(); menuDrop.style.display = menuDrop.style.display==='none'?'block':'none'; });
+    menuDrop.children[0].addEventListener('click', function(e){ e.stopPropagation(); menuDrop.style.display='none'; unmatchUser(m.id, item); });
+    menuDrop.children[1].addEventListener('click', function(e){ e.stopPropagation(); menuDrop.style.display='none'; blockUser(op.id, m.id, item); });
+    document.addEventListener('click', function(){ menuDrop.style.display='none'; }, {once:true});
+    menuWrap.appendChild(menuBtn); menuWrap.appendChild(menuDrop);
+    item.appendChild(avEl2); item.appendChild(detailEl); item.appendChild(timeEl); item.appendChild(menuWrap);
+    convList.appendChild(item);
+  }
+}
+
+async function openChatWith(op) {
+  const {data:match}=await db.from('matches').select('id')
+    .or(`and(profile_1_id.eq.${myProfile.id},profile_2_id.eq.${op.id}),and(profile_1_id.eq.${op.id},profile_2_id.eq.${myProfile.id})`)
+    .maybeSingle();
+  if(!match){toast('❌ Match tapılmadı');return;}
+  let {data:conv}=await db.from('conversations').select('id').eq('match_id',match.id).maybeSingle();
+  if(!conv){const {data:nc}=await db.from('conversations').insert({match_id:match.id}).select().single();conv=nc;}
+  activeConvId=conv.id;
+  activeChatProfile = op;
+  const avEl=document.getElementById('chatAv');
+  if(op.photos?.length) avEl.innerHTML=`<img src="${op.photos[0]}" alt="${op.name}">`;
+  else avEl.textContent=op.emoji||'😊';
+  document.getElementById('chatName').textContent=op.name;
+  showScreen('chatDetail'); loadMessages(conv.id);
+}
+
+async function loadMessages(convId) {
+  const area=document.getElementById('messagesArea'); area.innerHTML='';
+  const {data:msgs}=await db.from('messages').select('*').eq('conversation_id',convId).order('created_at',{ascending:true});
+  (msgs||[]).forEach(m=>appendMsg(m)); area.scrollTop=area.scrollHeight;
+  if(realtimeSub) db.removeChannel(realtimeSub);
+  realtimeSub=db.channel('conv-'+convId)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:`conversation_id=eq.${convId}`},
+      p=>{appendMsg(p.new);area.scrollTop=area.scrollHeight;}).subscribe();
+}
+
+function appendMsg(msg) {
+  const area=document.getElementById('messagesArea');
+  const mine=msg.sender_id===myProfile?.id;
+  const d=document.createElement('div');
+  d.className='msg '+(mine?'mine':'theirs');
+  d.innerHTML=`${msg.content}<div class="msg-time">${timeAgo(msg.created_at)}</div>`;
+  area.appendChild(d);
+}
+
+function openActiveChatProfile() {
+  if (activeChatProfile) openOtherProfile(activeChatProfile, 'chatDetail');
+}
+
+function toggleChatMenu() {
+  const m = document.getElementById('chatMenu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  if (m.style.display === 'block') {
+    setTimeout(() => document.addEventListener('click', () => { m.style.display='none'; }, {once:true}), 10);
+  }
+}
+
+async function doUnmatch() {
+  document.getElementById('chatMenu').style.display = 'none';
+  if (!activeChatProfile || !myProfile) return;
+  const { data: match } = await db.from('matches').select('id')
+    .or(`and(profile_1_id.eq.${myProfile.id},profile_2_id.eq.${activeChatProfile.id}),and(profile_1_id.eq.${activeChatProfile.id},profile_2_id.eq.${myProfile.id})`)
+    .maybeSingle();
+  if (!match) return;
+  await db.from('matches').update({ is_active: false }).eq('id', match.id);
+  toast('💔 Uyğunluq ləğv edildi');
+  showChats();
+}
+
+async function doBlock() {
+  document.getElementById('chatMenu').style.display = 'none';
+  if (!activeChatProfile || !myProfile) return;
+  if (!confirm(activeChatProfile.name + ' istifadəçisini bloklamaq istəyirsiniz?')) return;
+  // Swipe nope + match deaktiv
+  await db.from('swipes').upsert(
+    { swiper_id: myProfile.id, swiped_id: activeChatProfile.id, direction: 'nope' },
+    { onConflict: 'swiper_id,swiped_id' }
+  );
+  const { data: match } = await db.from('matches').select('id')
+    .or(`and(profile_1_id.eq.${myProfile.id},profile_2_id.eq.${activeChatProfile.id}),and(profile_1_id.eq.${activeChatProfile.id},profile_2_id.eq.${myProfile.id})`)
+    .maybeSingle();
+  if (match) await db.from('matches').update({ is_active: false }).eq('id', match.id);
+  toast('🚫 İstifadəçi bloklandı');
+  showChats();
+}
+
+async function unmatchUser(matchId, itemEl) {
+  await db.from('matches').update({ is_active: false }).eq('id', matchId);
+  if (itemEl) { itemEl.style.cssText += 'opacity:0;transition:opacity .3s'; setTimeout(()=>itemEl.remove(), 300); }
+  toast('💔 Uyğunluq ləğv edildi');
+}
+
+async function blockUser(profileId, matchId, itemEl) {
+  if (!confirm('Bu istifadəçini bloklamaq istəyirsiniz?')) return;
+  await db.from('swipes').upsert(
+    { swiper_id: myProfile.id, swiped_id: profileId, direction: 'nope' },
+    { onConflict: 'swiper_id,swiped_id' }
+  );
+  await db.from('matches').update({ is_active: false }).eq('id', matchId);
+  if (itemEl) { itemEl.style.cssText += 'opacity:0;transition:opacity .3s'; setTimeout(()=>itemEl.remove(), 300); }
+  toast('🚫 İstifadəçi bloklandı');
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const content = input.value.trim();
+  if (!content || !activeConvId || !myProfile) return;
+  input.value = '';
+  input.focus();
+  // Optimistic UI — show immediately
+  const tempMsg = { sender_id: myProfile.id, content, created_at: new Date().toISOString() };
+  appendMsg(tempMsg);
+  const area = document.getElementById('messagesArea');
+  area.scrollTop = area.scrollHeight;
+  const { error } = await db.from('messages').insert({ conversation_id: activeConvId, sender_id: myProfile.id, content });
+  if (error) {
+    toast('❌ Göndərilmədi: ' + error.message);
+    // Remove optimistic msg
+    area.lastChild?.remove();
+    input.value = content;
+  }
+}
+
+// ══════════ UTILS ══════════
+function timeAgo(ts){
+  if(!ts)return'';
+  const d=(Date.now()-new Date(ts))/1000;
+  if(d<60)return'indi'; if(d<3600)return Math.floor(d/60)+' dəq';
+  if(d<86400)return Math.floor(d/3600)+' saat'; return Math.floor(d/86400)+' gün';
+}
+function toast(msg,dur=3500){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await init();
+  checkPremiumReturn();
+});
+</script>
+</body>
+</html>
